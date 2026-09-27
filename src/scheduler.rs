@@ -3,7 +3,6 @@ use crate::tasks::{Task, TaskPriority, TaskState};
 use core::array::from_fn;
 use cortex_m::peripheral::SCB;
 use cortex_m_semihosting::hprintln;
-use cortex_m_semihosting::debug;
 
 const MAX_TASKS: usize = 8;
 
@@ -16,7 +15,7 @@ impl Scheduler {
     pub fn new() -> Self {
         Scheduler {
             tasks: from_fn(|_| None),
-            current: MAX_TASKS - 1,
+            current: MAX_TASKS - 1, 
         }
     }
     
@@ -67,13 +66,8 @@ impl Scheduler {
                 context_switch::CURR_TASK_SP_PTR = &mut t.sp;
                 t.state = TaskState::Ready;
                 if is_task_done {
-                    t.state = TaskState::Blocked;
                     self.tasks[cur] = None;
                     self.show_number_of_tasks();
-                    if self.tasks.iter().filter(|t| t.is_some()).count() == 0 {
-                        hprintln!("No more tasks scheduled.");
-                        debug::exit(debug::EXIT_SUCCESS);
-                    }
                 }
             }
             context_switch::NEXT_TASK_SP = next_sp;

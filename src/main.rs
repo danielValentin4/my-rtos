@@ -8,19 +8,22 @@ mod tasks;
 use scheduler::Scheduler;
 use tasks::{TaskPriority, TaskStack};
 
+
 use core::ptr::addr_of_mut;
 use cortex_m_rt::entry;
 use cortex_m_rt::exception;
 use cortex_m_semihosting::hprintln;
 use panic_semihosting as _;
 
+
+
 static mut SCHEDULER: Option<Scheduler> = None;
 
+static mut STACK_IDLE : TaskStack = TaskStack([0; 1024]);
 static mut STACK_A : TaskStack = TaskStack([0; 1024]);
 static mut STACK_B : TaskStack = TaskStack([0; 1024]);
 static mut STACK_C : TaskStack = TaskStack([0; 1024]);
 static mut STACK_D : TaskStack = TaskStack([0; 1024]);
-
 
 
 #[exception]
@@ -32,6 +35,16 @@ unsafe fn HardFault(_frame : &cortex_m_rt::ExceptionFrame) -> ! {
     loop {}
 }
 
+fn idle() -> ! {
+    loop {     
+        unsafe {
+            let sched_ptr = addr_of_mut!(SCHEDULER);
+            if let Some(s) = (*sched_ptr).as_mut() {
+                s.schedule(false);
+            }
+        }       
+    }
+}
 fn task_a() -> ! {
     let mut i : u16 = 0;
     loop {
@@ -91,11 +104,12 @@ fn task_c() -> ! {
 #[entry]
 fn main() -> ! {
     hprintln!("Hello, world!");
-
+    
     unsafe {
         let sch_ptr = addr_of_mut!(SCHEDULER);
         *sch_ptr = Some(Scheduler::new());
         let scheduler = (*sch_ptr).as_mut().unwrap();
+        scheduler.add_task(tasks::create_task(&mut *core::ptr::addr_of_mut!(STACK_IDLE), idle , TaskPriority::Idle));
         scheduler.show_number_of_tasks();
         scheduler.add_task(tasks::create_task(&mut *core::ptr::addr_of_mut!(STACK_A), task_a, TaskPriority::High));
         scheduler.add_task(tasks::create_task(&mut *core::ptr::addr_of_mut!(STACK_B), task_b, TaskPriority::High));
